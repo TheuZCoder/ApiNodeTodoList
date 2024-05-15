@@ -1,5 +1,6 @@
 const express = require("express");
 const { Pool } = require("pg");
+const cors = require("cors");
 require("dotenv").config();
 
 const PORT = 3000;
@@ -19,6 +20,7 @@ pool.connect((res) => {
 });
 
 const app = express();
+app.use(cors());
 
 app.use(express.json());
 
@@ -72,10 +74,46 @@ app.post("/todo/:user_id", async (req, res) => {
 app.get("/todo/:user_id", async (req, res) => {
   const { user_id } = req.params;
   try {
-    const todos = await pool.query("SELECT * FROM todos WHERE user_id = $1", [
+    const todos = await pool.query("SELECT * FROM todos WHERE user_id = ($1)", [
       user_id,
     ]);
     return res.status(200).json(todos.rows);
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+});
+
+app.patch("/todo/:user_id/:todo_id", async (req, res) => {
+  const { todo_id, user_id } = req.params;
+  const data = req.body;
+  try {
+    const belongsToUser = await pool.query(
+      "SELECT * FROM todos WHERE user_id = ($1) WHERE todo_id = ($2)",
+      [user_id, todo_id]
+    );
+    if (!belongsToUser.rows[0])
+      return res.status(400).json({ error: "Operation Not Allowed" });
+    const updateTodo = await pool.query(
+      "UPDATE todos SET todo_description = ($1), todo_done = ($2) WHERE todo_id = ($3) RETURNING *",
+      [data.todo_description, data.todo_done, todo_id]
+    );
+    return res.status(200).json(updateTodo.rows[0]);
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete("/todo/:user_id/:todo_id", async (req, res) => {
+  const { todo_id, user_id } = req.params;
+  try {
+    const deleteTodo = await pool.query(
+      "DELETE FROM todos WHERE todo_id = ($1) AND user_id = ($2) RETURNING *",
+      [todo_id, user_id]
+    );
+    return res.status(200).send(
+      message, 'Todo deleted successfully',
+      deleteTodo.rowCount
+    );
   } catch (error) {
     return res.status(400).json({ error: error.message });
   }
