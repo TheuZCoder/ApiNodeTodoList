@@ -3,14 +3,10 @@ const { Pool } = require("pg");
 const cors = require("cors");
 require("dotenv").config();
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 const pool = new Pool({
-  user: "postgres",
-  host: "localhost",
-  database: "api_node",
-  password: "postgres",
-  port: 5432,
+  connectionString: process.env.DATABASE_URL,
 });
 
 pool.connect((res) => {
